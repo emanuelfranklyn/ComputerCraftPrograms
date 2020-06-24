@@ -31,6 +31,7 @@ DefaultDir = "/" --the folder you will seen when you open the explorer
 FirstFolder = "/" -- the folder you cannot get out
 CurrentDir = DefaultDir --Defines the initial folder to the defaltDir
 DiskName = "C:" --Name of diskPartition --OBS: just used on TopBar Define it to "" if you dont want a Disk Partition Name
+UndeletableFolders = {"rom"}
 --[THIS NEED TO BE REFRESHED]--
 function RefreshPosition()
     ScrollMainBoxAllowed = false
@@ -377,64 +378,161 @@ end
 
 function ACTION()
     local function A()
-    while true do
-        --[MOUSE GETTER]--
-        Event, Button, X, Y = os.pullEventRaw()
-        if (Event == "key_up" and Button == 28 and SelectedFiles ~= "") then
-            CurrentDir = CurrentDir..SelectedFiles.."/"
-            SelectedFiles = ""
-            SideBarSelectedFile = ""
-            Drawn()
-        end
-        --if (Event == "key_up" and Button == 211 and SelectedFiles ~= "") then
-            --DELETEFILE(CurrentDir..SelectedFiles)
-            --Drawn()
-            --break
-        --end
+        while true do
+            Event, Button, X, Y = os.pullEventRaw()
+            if (Event == "key_up" and Button == 28 and SelectedFiles ~= "") then
+                CurrentDir = CurrentDir..SelectedFiles.."/"
+                SelectedFiles = ""
+                SideBarSelectedFile = ""
+                Drawn()
+            end
+            if (Event == "key_up" and Button == 211) then
+                --Delete
+                ER = false
+                for G,V in ipairs(UndeletableFolders) do
+                    if ((DefaultDir..V == CurrentDir..SelectedFiles) or (CurrentDir == FirstFolder and SelectedFiles == homedir[1].name)) then
+                        ER = true
+                    end
+                end
+                if (ER == false) then
+                    fs.delete(CurrentDir..SelectedFiles)
+                    DrawnTexts()
+                    DrawnFiles()
+                    DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                    Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "Deletado")
+                else
+                    DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                    Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "Acesso negado")
+                end
+                sleep(1)
+                DrawnFiles()
+            end
+            if ((Event == "key" or Event == "key_up") and Button == 29) then
+                ControlPressed = Event == "key"
+            end
+            if (ControlPressed == true and Event == "key" and Button == 46 and SelectedFiles ~= "") then
+                --control c
+                coppiedFile = CurrentDir..SelectedFiles
+                DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "Copiado")
+                sleep(0.5)
+                DrawnFiles()
+            end
+            if (Event == "paste" and coppiedFile ~= "" and coppiedFile ~= nil) then
+                --control V
+                ERR = false
+                if (fs.isDir(coppiedFile) == true) then
+                    function md(Dir)
+                        FolderN = ""
+                        for j = 1, string.len(Dir) do
+                            if (string.sub(Dir, string.len(Dir)-j, string.len(Dir)-j) == "/") then
+                                FolderN = string.sub(Dir, string.len(Dir)-(j-1), string.len(Dir))
+                                break
+                            end
+                        end
+                        if (string.sub(CurrentDir, string.len(CurrentDir), string.len(CurrentDir)) == "/") then
+                            CurrentDir = string.sub(CurrentDir, 1, string.len(CurrentDir))
+                        end
+                        if (fs.exists(CurrentDir.."/"..FolderN) == true) then
+                            DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                            Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "A pasta já existe!")
+                            ERR = true
+                            sleep(1)
+                            return
+                        end
+                        ERR = false
+                        fs.makeDir(CurrentDir.."/"..FolderN)
+                        CurrentDir = CurrentDir.."/"..FolderN
+                        for G,V in ipairs(fs.list(Dir)) do
+                            if (fs.isDir(Dir.."/"..V) == true) then
+                                b = CurrentDir
+                                md(Dir.."/"..V)
+                                CurrentDir = b
+                            else
+                                if (fs.exists(CurrentDir.."/"..V) == false) then
+                                    fs.copy(Dir.."/"..V, CurrentDir.."/"..V)
+                                else
+                                    DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                                    Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, V.." já existe!")
+                                    sleep(1)
+                                end
+                            end
+                        end
+                    end
+                    CurrentDirBackup = CurrentDir
+                    md(coppiedFile)
+                    CurrentDir = CurrentDirBackup
+                else
+                    FileN = ""
+                    for j = 1, string.len(coppiedFile) do
+                        if (string.sub(coppiedFile, string.len(coppiedFile)-j, string.len(coppiedFile)-j) == "/") then
+                            FileN = string.sub(coppiedFile, string.len(coppiedFile)-(j-1), string.len(coppiedFile))
+                            break
+                        end
+                    end
+                    if (fs.exists(CurrentDir.."/"..FileN) == false) then
+                        fs.copy(coppiedFile, CurrentDir.."/"..FileN)
+                    else
+                        DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                        Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "O arquivo já existe!")
+                        ERR = true
+                        sleep(1)
+                    end
+                end
+                if (ERR == false) then
+                    DrawnFiles()
+                    DrawnTexts()
+                    DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                    Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "Colado!")
+                    sleep(1)
+                end
+                DrawnTexts()
+                DrawnFiles()
+            end
             if (Event == "mouse_scroll" and X > SideBarX and X < PositionX+SizeX+3 and Y > PositionY+4 and Y < PositionY+SizeY+3) then
                 if (ScrollMainBoxAllowed == true) then
+                    RefreshPosition()
                     if (ScrollMainBox == 0) then
                         ScrollMainBox = 1
                     end
                     if (Button == -1) then
-                        --ToUp
-                        if (ScrollMainBox > 0) then
+                        if (ScrollMainBox > 1) then
                             ScrollMainBox = ScrollMainBox - 1
+                            DrawnFiles()
                         end
                     else
-                        --ToDown
-                        ScrollMainBox = ScrollMainBox + 1
+                        if (ScrollMainBoxStopping == true) then
+                            ScrollMainBox = ScrollMainBox + 1
+                            DrawnFiles()
+                        end
                     end
-                    DrawnFiles()
                 end
             end
-            if (Event == "mouse_scroll" and X > PositionX-2 and X < SideBarX-1 and Y > PositionY+3 and Y < PositionY+SizeY+3) then
+            if (Event == "mouse_scroll" and X < SideBarX-1 and Y < SizeY+3) then
+                RefreshPosition()
                 if (ScrollSideBarAllowed == true) then
                     if (ScrollSideBar == 0) then
                         ScrollSideBar = 1
+                        DrawnTexts()
                     end
                     if (Button == -1) then
-                        --ToUp
-                        if (ScrollSideBar >= 1) then
+                        if (ScrollSideBar > 1) then
                             ScrollSideBar = ScrollSideBar - 1
                             DrawnTexts()
                         end
                     else
-                        if (SideBarStoppingDown == false) then
-                            --ToDown
+                        if (StopScrollDown == false) then
                             ScrollSideBar = ScrollSideBar + 1
                             DrawnTexts()
                         end
                     end
                 end
             end
-            --SideBarClickable
             if (Event == "mouse_click" and X > PositionX-2 and X < SideBarX and Y > PositionY+3 and Y < PositionY+5) then
                 SideBarSelectedFile = ""
                 DrawnTexts()
             end
             if (Event == "mouse_click" and X > PositionX-2 and X < SideBarX and Y > PositionY+4 and Y < PositionY+SizeY+3) then
-                --No Scroll
                 DrawnTexts()
                 if (table.getn(FilesToWork) == 0) then
                     if (fs.list(CurrentDir)[(Y-(PositionY+4))] == nil) then
@@ -442,13 +540,8 @@ function ACTION()
                         DrawnTexts()
                     end
                     if (fs.list(CurrentDir)[(Y-(PositionY+4))] and fs.isDir(CurrentDir..fs.list(CurrentDir)[(Y-(PositionY+4))]) == true) then
-                        --if (X == PositionX) then --Droppable system 
-                            --Drop Folder
-                        --else
-                            --Enter in the folder
                             DrawnTexts()
                             if (SideBarSelectedFile == CurrentDir..fs.list(CurrentDir)[(Y-(PositionY+4))] and fs.isDir(SideBarSelectedFile) == true) then
-                                --Open the folder in a big exibition
                                 SideBarSelectedFile = ""
                                 table.insert(PathHistory, CurrentDir)
                                 CurrentDir = CurrentDir..fs.list(CurrentDir)[(Y-(PositionY+4))].."/"
@@ -461,7 +554,6 @@ function ACTION()
                                 DrawnBox(PositionX-1, Y, SideBarX, Y+1, Colors.SelectedItem)
                                 Write(PositionX, Y, Colors.menu.text, Colors.SelectedItem, string.char(16)..string.sub(fs.list(CurrentDir)[(Y-(PositionY+4))], 1, SideBarX-PositionX-1))
                             end
-                        --end
                     else
                         if (fs.list(CurrentDir)[(Y-(PositionY+4))] ~= nil) then 
                             SideBarSelectedFile = CurrentDir..fs.list(CurrentDir)[(Y-(PositionY+4))]
@@ -473,16 +565,11 @@ function ACTION()
                     end
                 else
                     if (fs.isDir(CurrentDir..FilesToWork[(Y-(PositionY+4))]) == true) then
-                        --if (X == PositionX) then --Droppable system
-                            --Drop folder
-                        --else
-                            --Enter in the folder
                             DrawnTexts()
                             if (SideBarSelectedFile == CurrentDir..FilesToWork[(Y-(PositionY+4))] and fs.isDir(SideBarSelectedFile) == true) then
-                                --Open the folder in a big exibition
                                 SideBarSelectedFile = ""
                                 table.insert(PathHistory, CurrentDir)
-                                CurrentDir = CurrentDir..FilesToWork[(Y-(PositionY+4))]
+                                CurrentDir = CurrentDir..FilesToWork[(Y-(PositionY+4))].."/"
                                 SelectedFiles = ""
                                 SideBarSelectedFile = ""
                                 DrawnTexts()
@@ -490,16 +577,16 @@ function ACTION()
                                 SideBarSelectedFile = CurrentDir..FilesToWork[(Y-(PositionY+4))]
                                 DrawnTexts()
                             end
-                            DrawnBox(PositionX-1, Y, SideBarX, Y+1, Colors.SelectedItem)
-                            Write(PositionX, Y, Colors.menu.text, Colors.SelectedItem, string.char(16)..string.sub(FilesToWork[(Y-(PositionY+4))], 1, SideBarX-PositionX-1))
-                        --end
+                            if (FilesToWork[(Y-(PositionY+4))] ~= nil) then
+                                DrawnBox(PositionX-1, Y, SideBarX, Y+1, Colors.SelectedItem)
+                                Write(PositionX, Y, Colors.menu.text, Colors.SelectedItem, string.char(16)..string.sub(FilesToWork[(Y-(PositionY+4))], 1, SideBarX-PositionX-1))
+                            end
                     else
                         SideBarSelectedFile = FilesToWork[(Y-(PositionY+4))]
                         DrawnTexts()
                         DrawnBox(PositionX-1, Y, SideBarX, Y+1, Colors.SelectedItem)
                         Write(PositionX+1, Y, Colors.menu.text, Colors.SelectedItem, string.sub(FilesToWork[(Y-(PositionY+4))], 1, SideBarX-PositionX-1))
                         OPENFILE(CurrentDir..FilesToWork[(Y-(PositionY+4))])
-                        
                     end
                 end
             end
@@ -527,11 +614,6 @@ function ACTION()
                     Drawn()
                 end
             end
-            if (Event == "mouse_click" and X == PositionX and Y == PositionY) then
-                term.clear()
-                term.setCursorPos(1,0)
-                error("")
-            end
             if (Event == "mouse_click" and X == PositionX+2 and Y == PositionY+2 and CurrentDir ~= FirstFolder) then
                 Write(PositionX+2, PositionY+2, Colors.SelectedItem, Colors.menu.background, string.char(24))
                 sleep(0.1)
@@ -544,10 +626,10 @@ function ACTION()
                 if (NumberOfSlachs > 0) then
                     for Index = 1, string.len(CurrentDir) do
                         if (string.sub(CurrentDir, string.len(CurrentDir)-Index, string.len(CurrentDir)-Index) == "/") then
+                            table.insert(PathHistory, CurrentDir)
                             CurrentDir = string.sub(CurrentDir, 1, string.len(CurrentDir)-Index)
                             SelectedFiles = ""
                             SideBarSelectedFile = ""
-                            table.insert(PathHistory, CurrentDir)
                             Drawn()
                             break
                         end
@@ -560,11 +642,10 @@ function ACTION()
                     Drawn()
                 end
             end
-            --[Big Files View Clicable files]--
             if (Event == "mouse_click") then
                 if (table.getn(MainFilesToWork) > 0) then
                     for K,V in ipairs(MainFilesToWork) do
-                        if (K == nil or V == nil) then Drawn() end
+                        if (K == nil or V == nil) then DrawnFiles() end
                         if (X >= V[1]-1 and X <= V[1]+3 and Y >= V[2] and Y <= V[2]+5) then
                             if (V[3] == "FO") then
                                 if (SelectedFiles == MainFilesToWork[K][8]) then
@@ -573,18 +654,22 @@ function ACTION()
                                     CurrentDir = CurrentDir..MainFilesToWork[K][8].."/"
                                     SelectedFiles = ""
                                     SideBarSelectedFile = ""
-                                    MainFilesToWork = {}
                                     Drawn()
+                                    break
                                 else
                                     SelectedFiles=MainFilesToWork[K][8]
                                 end
+                                DrawnFiles()
+                                break
                             else
                                 if (SelectedFiles == MainFilesToWork[K][6]) then
                                     OPENFILE(CurrentDir..MainFilesToWork[K][6])
+                                else
+                                    SelectedFiles=MainFilesToWork[K][6]
                                 end
-                                SelectedFiles=MainFilesToWork[K][6]
+                                DrawnFiles()
+                                break
                             end
-                            Drawn()
                         end
                     end
                 else
@@ -599,6 +684,7 @@ function ACTION()
                                     SideBarSelectedFile = ""
                                     table.insert(PathHistory, CurrentDir)
                                     Drawn()
+                                    break
                                 end
                             else
                                 if (SelectedFiles == fs.list(CurrentDir)[K]) then
@@ -607,14 +693,13 @@ function ACTION()
                                 end
                             end
                             SelectedFiles=fs.list(CurrentDir)[K]
-                            Drawn()
+                            DrawnFiles()
+                            break
                         end
                     end
                 end
             end
-            
-        --[END]--
-    end 
+        end 
     end
     function Checker()
         while true do
