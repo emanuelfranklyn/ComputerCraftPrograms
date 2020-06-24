@@ -57,9 +57,9 @@ function OPENFILE(DirWithFileName)
 --Do something Here!!!!!!
 end
 
---function DELETEFILE(DirWithFileName)
---Do something Here!!!!!!
---end
+function DELETEFILE(DirWithFileName)
+    fs.delete(DirWithFileName)
+end
 
 --[Colors]--
 Colors.SelectedItem = 8
@@ -424,6 +424,13 @@ function ACTION()
                 if (fs.isDir(coppiedFile) == true) then
                     function md(Dir)
                         FolderN = ""
+                        if (string.sub(CurrentDir, string.len(CurrentDir)-string.len(Dir), string.len(CurrentDir)) == Dir.."/") then
+                            DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.main.background)
+                            Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "Recursão não permitida")
+                            sleep(1)
+                            ERR = true
+                            return
+                        end
                         for j = 1, string.len(Dir) do
                             if (string.sub(Dir, string.len(Dir)-j, string.len(Dir)-j) == "/") then
                                 FolderN = string.sub(Dir, string.len(Dir)-(j-1), string.len(Dir))
@@ -486,6 +493,7 @@ function ACTION()
                     Write(SideBarX, ScreenSizeY+3, Colors.main.text, Colors.main.background, "Colado!")
                     sleep(1)
                 end
+                DrawnFilledBox(SideBarX, ScreenSizeY+3, ScreenSizeX+7, ScreenSizeY+4, Colors.menu.background)
                 DrawnTexts()
                 DrawnFiles()
             end
